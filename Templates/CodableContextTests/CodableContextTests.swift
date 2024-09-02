@@ -8,7 +8,7 @@ class CodableContextTests: QuickSpec {
 
         let encoder: JSONEncoder = {
             let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             return encoder
         }()
 
@@ -24,9 +24,9 @@ class CodableContextTests: QuickSpec {
                     let encoded = try! encoder.encode(value)
                     expect(String(data: encoded, encoding: .utf8)).to(equal("""
                     {
-                      "type" : "someCase",
                       "id" : 0,
-                      "name" : "a"
+                      "name" : "a",
+                      "type" : "someCase"
                     }
                     """
                     ))

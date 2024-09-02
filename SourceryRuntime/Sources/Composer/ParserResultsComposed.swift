@@ -402,8 +402,6 @@ internal struct ParserResultsComposed {
             }
 
             if closure.returnTypeName.actualTypeName != nil || needsUpdate || retrievedName != nil {
-                typeName.closure = closure // TODO: really don't like this old behaviour
-
                 typeName.actualTypeName = TypeName(name: closure.asSource,
                                                    isOptional: typeName.isOptional,
                                                    isImplicitlyUnwrappedOptional: typeName.isImplicitlyUnwrappedOptional,
@@ -428,12 +426,9 @@ internal struct ParserResultsComposed {
             }
 
             if needsUpdate || retrievedName != nil {
-                let generic = GenericType(name: generic.name, typeParameters: generic.typeParameters)
-                generic.typeParameters.forEach {
-                    $0.typeName = $0.typeName.actualTypeName ?? $0.typeName
-                    $0.typeName.actualTypeName = nil // TODO: really don't like this old behaviour
-                }
-                typeName.generic = generic // TODO: really don't like this old behaviour
+                let generic = GenericType(name: generic.name, typeParameters: generic.typeParameters.map {
+                    GenericTypeParameter(typeName: $0.typeName.actualTypeName ?? $0.typeName)
+                })
                 typeName.array = lookupName.array // TODO: really don't like this old behaviour
                 typeName.dictionary = lookupName.dictionary // TODO: really don't like this old behaviour
 
@@ -476,9 +471,33 @@ internal struct ParserResultsComposed {
             return nil
         }
 
-        /// TODO: verify
-        let generic = typeName.generic.map { GenericType(name: $0.name, typeParameters: $0.typeParameters) }
-        generic?.name = aliased.name
+        let aliasedGenericParameters = zip(
+            aliased.typealias?.aliasTypeName.generic?.typeParameters.map(\.typeName.name) ?? [],
+            typeName.generic?.typeParameters ?? []
+        ).reduce(into: [:]) { partialResult, item in
+            partialResult[item.0] = item.1
+        }
+
+        let generic = aliased.typealias?.typeName.generic.map {
+            GenericType(name: $0.name, typeParameters: $0.typeParameters.map {
+                aliasedGenericParameters[$0.typeName.name] ?? $0
+            })
+        } ?? typeName.generic.map { generic in
+            GenericType(name: aliased.name, typeParameters: generic.typeParameters)
+        }
+
+        let closure = aliased.typealias?.typeName.closure.map {
+            let parameters = $0.parameters.map {
+                ClosureParameter(typeName: aliasedGenericParameters[$0.typeName.name]?.typeName ?? $0.typeName)
+            }
+
+            return ClosureType(
+                name: "(\(parameters.map(\.typeName.asSource).joined(separator: ", "))) -> \($0.returnTypeName)",
+                parameters: parameters,
+                returnTypeName: $0.returnTypeName
+            )
+        }
+
         let dictionary = typeName.dictionary.map { DictionaryType(name: $0.name, valueTypeName: $0.valueTypeName, valueType: $0.valueType, keyTypeName: $0.keyTypeName, keyType: $0.keyType) }
         dictionary?.name = aliased.name
         let array = typeName.array.map { ArrayType(name: $0.name, elementTypeName: $0.elementTypeName, elementType: $0.elementType) }
@@ -490,8 +509,8 @@ internal struct ParserResultsComposed {
                         tuple: aliased.typealias?.typeName.tuple ?? typeName.tuple, // TODO: verify
                         array: aliased.typealias?.typeName.array ?? array,
                         dictionary: aliased.typealias?.typeName.dictionary ?? dictionary,
-                        closure: aliased.typealias?.typeName.closure ?? typeName.closure,
-                        generic: aliased.typealias?.typeName.generic ?? generic
+                        closure: closure,
+                        generic: closure == nil ? generic : nil
         )
     }
 

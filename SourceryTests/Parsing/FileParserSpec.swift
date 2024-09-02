@@ -385,6 +385,34 @@ class FileParserSpec: QuickSpec {
                                     Typealias(aliasName: "GlobalAlias", typeName: TypeName(name: "() -> ()", closure: ClosureType(name: "() -> ()", parameters: [], returnTypeName: TypeName(name: "()"))), accessLevel: .private)
                                     ]))
                         }
+
+                        it("extracts generic parameters") {
+                            expect(parse("typealias Foo<Bar> = (Bar) -> Void").typealiases)
+                                .to(
+                                    equal(
+                                        [
+                                            Typealias(
+                                                aliasTypeName: TypeName(
+                                                    name: "Foo",
+                                                    generic: GenericType(name: "Foo", typeParameters: [
+                                                        GenericTypeParameter(typeName: TypeName(name: "Bar"), type: nil)
+                                                    ])
+                                                ),
+                                                typeName: TypeName(
+                                                    name: "(Bar) -> Void",
+                                                    closure: ClosureType(
+                                                        name: "(Bar) -> Void",
+                                                        parameters: [
+                                                            ClosureParameter(typeName: TypeName(name: "Bar"))
+                                                        ],
+                                                        returnTypeName: TypeName(name: "Void")
+                                                    )
+                                                )
+                                            )
+                                        ]
+                                    )
+                                )
+                        }
                     }
 
                     context("given local typealias") {

@@ -4,7 +4,12 @@ import Foundation
 /// :nodoc:
 @objcMembers public final class Typealias: NSObject, Typed, SourceryModel {
     // New typealias name
-    public let aliasName: String
+    public var aliasName: String {
+        aliasTypeName.name
+    }
+
+    // New typealias name
+    public let aliasTypeName: TypeName
 
     // Target name
     public let typeName: TypeName
@@ -35,8 +40,8 @@ import Foundation
         }
     }
 
-    public init(aliasName: String = "", typeName: TypeName, accessLevel: AccessLevel = .internal, parent: Type? = nil, module: String? = nil) {
-        self.aliasName = aliasName
+    public init(aliasTypeName: TypeName, typeName: TypeName, accessLevel: AccessLevel = .internal, parent: Type? = nil, module: String? = nil) {
+        self.aliasTypeName = aliasTypeName
         self.typeName = typeName
         self.accessLevel = accessLevel.rawValue
         self.parent = parent
@@ -44,11 +49,21 @@ import Foundation
         self.module = module
     }
 
+    public convenience init(aliasName: String = "", typeName: TypeName, accessLevel: AccessLevel = .internal, parent: Type? = nil, module: String? = nil) {
+        self.init(
+            aliasTypeName: TypeName(name: aliasName),
+            typeName: typeName,
+            accessLevel: accessLevel,
+            parent: parent,
+            module: module
+        )
+    }
+
 // sourcery:inline:Typealias.AutoCoding
 
         /// :nodoc:
         required public init?(coder aDecoder: NSCoder) {
-            guard let aliasName: String = aDecoder.decode(forKey: "aliasName") else { NSException.raise(NSExceptionName.parseErrorException, format: "Key '%@' not found.", arguments: getVaList(["aliasName"])); fatalError() }; self.aliasName = aliasName
+            guard let aliasTypeName: TypeName = aDecoder.decode(forKey: "aliasTypeName") else { NSException.raise(NSExceptionName.parseErrorException, format: "Key '%@' not found.", arguments: getVaList(["aliasName"])); fatalError() }; self.aliasTypeName = aliasTypeName
             guard let typeName: TypeName = aDecoder.decode(forKey: "typeName") else { NSException.raise(NSExceptionName.parseErrorException, format: "Key '%@' not found.", arguments: getVaList(["typeName"])); fatalError() }; self.typeName = typeName
             self.type = aDecoder.decode(forKey: "type")
             self.module = aDecoder.decode(forKey: "module")
@@ -59,7 +74,7 @@ import Foundation
 
         /// :nodoc:
         public func encode(with aCoder: NSCoder) {
-            aCoder.encode(self.aliasName, forKey: "aliasName")
+            aCoder.encode(self.aliasTypeName, forKey: "aliasTypeName")
             aCoder.encode(self.typeName, forKey: "typeName")
             aCoder.encode(self.type, forKey: "type")
             aCoder.encode(self.module, forKey: "module")

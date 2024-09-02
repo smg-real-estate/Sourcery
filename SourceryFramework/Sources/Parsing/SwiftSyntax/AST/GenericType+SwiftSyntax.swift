@@ -10,4 +10,12 @@ extension GenericType {
 
         self.init(name: name, typeParameters: parameters)
     }
+
+    convenience init(name: String, node: GenericParameterClauseSyntax) {
+        let parameters = node.genericParameterList.map { parameter in
+            GenericTypeParameter(typeName: TypeName(name: parameter.sourcerySafeTypeIdentifier))
+        }
+
+        self.init(name: name, typeParameters: parameters)
+    }
 }

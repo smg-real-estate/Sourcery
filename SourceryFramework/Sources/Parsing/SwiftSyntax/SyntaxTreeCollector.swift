@@ -218,12 +218,16 @@ class SyntaxTreeCollector: SyntaxVisitor {
             return .skipChildren
         }
 
+        let generic = node.genericParameterClause.map {
+            GenericType(name: localName, node: $0)
+        }
+
         let alias = Typealias(
-          aliasName: localName,
-          typeName: typeName,
-          accessLevel: baseModifiers.readAccess,
-          parent: visitingType,
-          module: module
+            aliasTypeName: TypeName(name: localName, generic: generic),
+            typeName: typeName,
+            accessLevel: baseModifiers.readAccess,
+            parent: visitingType,
+            module: module
         )
 
         // TODO: add generic requirements

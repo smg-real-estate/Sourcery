@@ -1130,6 +1130,62 @@ class ParserComposerSpec: QuickSpec {
                             expect(variable?.type).to(equal(expectedVariable.type))
                         }
 
+                        it("replaces variable generic alias type with actual type") {
+                            let expectedVariable = Variable(
+                                name: "foo",
+                                typeName: TypeName(
+                                    name: "GlobalAlias<Int>",
+                                    actualTypeName: TypeName(
+                                        name: "Foo<Int>",
+                                        generic: GenericType(name: "Foo", typeParameters: [
+                                            GenericTypeParameter(typeName: TypeName(name: "Int"), type: nil)
+                                        ])
+                                    ),
+                                    generic: GenericType(name: "GlobalAlias", typeParameters: [
+                                        GenericTypeParameter(typeName: TypeName(name: "Int"), type: nil)
+                                    ])
+                                ),
+                                definedInTypeName: TypeName(name: "Bar")
+                            )
+                            expectedVariable.type = Class(name: "Foo", isGeneric: true)
+
+                            let type = parse("typealias GlobalAlias<T> = Foo<T>; class Foo<T> {}; class Bar { var foo: GlobalAlias<Int> }").first
+                            let variable = type?.variables.first
+
+                            expect(variable).to(equal(expectedVariable))
+                            expect(variable?.actualTypeName).to(equal(expectedVariable.actualTypeName))
+                            expect(variable?.type).to(equal(expectedVariable.type))
+                        }
+
+                        it("replaces variable generic alias type with actual closure type") {
+                            let expectedVariable = Variable(
+                                name: "foo",
+                                typeName: TypeName(
+                                    name: "GlobalAlias<Int>",
+                                    actualTypeName: TypeName(
+                                        name: "(Int) -> Void",
+                                        closure: ClosureType(
+                                            name: "(Int) -> Void",
+                                            parameters: [
+                                                ClosureParameter(typeName: TypeName(name: "Int"))
+                                            ],
+                                            returnTypeName: TypeName(name: "Void")
+                                        )
+                                    ),
+                                    generic: GenericType(name: "GlobalAlias", typeParameters: [
+                                        GenericTypeParameter(typeName: TypeName(name: "Int"), type: nil)
+                                    ])
+                                ),
+                                definedInTypeName: TypeName(name: "Bar")
+                            )
+
+                            let type = parse("typealias GlobalAlias<T> = (T) -> Void; class Bar { var foo: GlobalAlias<Int> }").first
+                            let variable = type?.variables.first
+
+                            expect(variable).to(equal(expectedVariable))
+                            expect(variable?.actualTypeName).to(equal(expectedVariable.actualTypeName))
+                        }
+
                         it("replaces tuple elements alias types with actual types") {
                             let expectedActualTypeName = TypeName(name: "(Foo, Int)")
                             expectedActualTypeName.tuple = TupleType(name: "(Foo, Int)", elements: [
@@ -1336,7 +1392,7 @@ class ParserComposerSpec: QuickSpec {
                                 ], returnTypeName: TypeName(name: "Any")
                             )
 
-                            let expectedAssociatedValue = AssociatedValue(typeName: TypeName(name: "JSON", actualTypeName: expectedTypeName, closure: expectedTypeName.closure), type: nil)
+                            let expectedAssociatedValue = AssociatedValue(typeName: TypeName(name: "JSON", actualTypeName: expectedTypeName), type: nil)
 
                             let types = parse("typealias JSON = (String) -> Any; enum Some { case optionA(JSON) }")
                             let associatedValue = (types.last as? Enum)?.cases.first?.associatedValues.first
@@ -1609,11 +1665,25 @@ class ParserComposerSpec: QuickSpec {
                     }
 
                     it("extracts property of nested generic type properly") {
-                        let expectedActualTypeName = TypeName(name: "Blah.Foo<Blah.FooBar>?")
-                        let expectedVariable = Variable(name: "foo", typeName: TypeName(name: "Foo<FooBar>?", actualTypeName: expectedActualTypeName), accessLevel: (read: .internal, write: .none), definedInTypeName: TypeName(name: "Blah.Bar"))
-                        let expectedBlah = Struct(name: "Blah", containedTypes: [Struct(name: "FooBar"), Struct(name: "Foo<T>"), Struct(name: "Bar", variables: [expectedVariable])])
-                        expectedActualTypeName.generic = GenericType(name: "Blah.Foo", typeParameters: [GenericTypeParameter(typeName: TypeName(name: "Blah.FooBar"), type: expectedBlah.containedType["FooBar"])])
-                        expectedVariable.typeName.generic = expectedActualTypeName.generic
+                        let expectedVariable = Variable(
+                            name: "foo",
+                            typeName: TypeName(
+                                name: "Foo<FooBar>?",
+                                actualTypeName: TypeName(
+                                    name: "Blah.Foo<Blah.FooBar>?",
+                                    generic: GenericType(
+                                        name: "Blah.Foo",
+                                        typeParameters: [GenericTypeParameter(typeName: TypeName(name: "Blah.FooBar"), type: Struct(name: "FooBar"))]
+                                    )
+                                ),
+                                generic: GenericType(
+                                    name: "Foo",
+                                    typeParameters: [GenericTypeParameter(typeName: TypeName(name: "FooBar"), type: Struct(name: "FooBar"))]
+                                )
+                            ),
+                            accessLevel: (read: .internal, write: .none),
+                            definedInTypeName: TypeName(name: "Blah.Bar")
+                        )
 
                         let types = parse("""
                                           struct Blah {
@@ -1988,9 +2058,9 @@ class ParserComposerSpec: QuickSpec {
 
                             let expectedFoo = Struct(name: "Foo", variables: [
                                 Variable(name: "bar", typeName: TypeName(name: "Bar"), type: expectedBar, accessLevel: (.internal, .none), definedInTypeName: TypeName(name: "Foo")),
-                                Variable(name: "bazbars", typeName: TypeName(name: "Baz<Bar>", generic: .init(name: "ModuleA.Foo.Baz", typeParameters: [.init(typeName: .init("ModuleA.Foo.Bar"))])), type: expectedBaz, accessLevel: (.internal, .none), definedInTypeName: TypeName(name: "Foo")),
-                                Variable(name: "bazDoubles", typeName: TypeName(name: "Baz<Double>", generic: .init(name: "ModuleA.Foo.Baz", typeParameters: [.init(typeName: .init("Double"))])), type: expectedBaz, accessLevel: (.internal, .none), definedInTypeName: TypeName(name: "Foo")),
-                                Variable(name: "bazInts", typeName: TypeName(name: "Baz<Int>", generic: .init(name: "ModuleA.Foo.Baz", typeParameters: [.init(typeName: .init("Int"))])), type: expectedBaz, accessLevel: (.internal, .none), definedInTypeName: TypeName(name: "Foo"))
+                                Variable(name: "bazbars", typeName: TypeName(name: "Baz<Bar>", generic: .init(name: "Baz", typeParameters: [.init(typeName: .init("Bar"))])), type: expectedBaz, accessLevel: (.internal, .none), definedInTypeName: TypeName(name: "Foo")),
+                                Variable(name: "bazDoubles", typeName: TypeName(name: "Baz<Double>", generic: .init(name: "Baz", typeParameters: [.init(typeName: .init("Double"))])), type: expectedBaz, accessLevel: (.internal, .none), definedInTypeName: TypeName(name: "Foo")),
+                                Variable(name: "bazInts", typeName: TypeName(name: "Baz<Int>", generic: .init(name: "Baz", typeParameters: [.init(typeName: .init("Int"))])), type: expectedBaz, accessLevel: (.internal, .none), definedInTypeName: TypeName(name: "Foo"))
                             ], containedTypes: [expectedBar, expectedBaz])
                             expectedFoo.module = "ModuleA"
 
