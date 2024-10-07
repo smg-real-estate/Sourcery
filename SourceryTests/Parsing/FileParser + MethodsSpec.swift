@@ -99,6 +99,40 @@ class FileParserMethodsSpec: QuickSpec {
                     )
                 }
 
+                it("extracts closure attributes correctly") {
+                    let methods = parse("""
+                                        protocol ClosureProtocol {
+                                            func setClosure(_ closure: (@MainActor @Sendable () -> Void)?)
+                                        }
+                                        """)[0].methods
+
+                    expect(methods[0]).to(
+                        equal(
+                            Method(
+                                name: "setClosure(_ closure: (@MainActor @Sendable () -> Void)?)",
+                                selectorName: "setClosure(_:)",
+                                parameters: [
+                                    MethodParameter(
+                                        argumentLabel: nil,
+                                        name: "closure",
+                                        typeName: .buildOptionalClosure(
+                                            TypeName(name: "Void"),
+                                            attributes: ["MainActor": [Attribute(name: "MainActor")], "Sendable": [Attribute(name: "Sendable")]]
+                                        ),
+                                        type: nil,
+                                        defaultValue: nil,
+                                        annotations: [:],
+                                        isInout: false
+                                    )
+                                ],
+                                returnTypeName: TypeName(name: "Void"),
+                                attributes: [:],
+                                definedInTypeName: TypeName(name: "ClosureProtocol")
+                            )
+                        )
+                    )
+                }
+
                 it("extracts protocol methods properly") {
                     let methods = parse("""
                     protocol Foo {

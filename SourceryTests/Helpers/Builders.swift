@@ -36,6 +36,11 @@ extension TypeName {
         return TypeName(name: closure.name, attributes: attributes, closure: closure)
     }
 
+    static func buildOptionalClosure(_ returnTypeName: TypeName, attributes: AttributeList = [:]) -> TypeName {
+        let closure = ClosureType(name: "() -> \(returnTypeName)", parameters: [], returnTypeName: returnTypeName)
+        return TypeName(name: "(\(closure.name))?", attributes: attributes, closure: closure)
+    }
+
     static func buildClosure(_ parameters: ClosureParameter..., returnTypeName: TypeName) -> TypeName {
         let closure = ClosureType(name: "\(parameters.asSource) -> \(returnTypeName)", parameters: parameters, returnTypeName: returnTypeName)
         return TypeName(name: closure.name, closure: closure)

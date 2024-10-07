@@ -137,6 +137,10 @@ import Foundation
           [specialTreatment ? name : unwrappedTypeName]
         ).joined(separator: " ")
 
+        if isClosure && isOptional {
+            description = "(\(description))"
+        }
+
         if let _ = self.dictionary { // array and dictionary cases are covered by the unwrapped type name
 //            description.append(dictionary.asSource)
         } else if let _ = self.array {
@@ -159,11 +163,11 @@ import Foundation
     }
 
     public override var description: String {
-       (
-          attributes.flatMap({ $0.value }).map({ $0.asSource }).sorted() +
-          modifiers.map({ $0.asSource }) +
-          [name]
-        ).joined(separator: " ")
+        asSource
+    }
+
+    public var closureNotation: String {
+        asSource.replacingOccurrences(of: "!", with: "?")
     }
 
 // sourcery:inline:TypeName.AutoCoding

@@ -51,7 +51,7 @@ import {{ import }}
 
 {% macro methodClosureName method %}{% call swiftifyMethodName method.selectorName %}Closure{% endmacro %}
 
-{% macro closureReturnTypeName method %}{% if method.isOptionalReturnType %}{{ method.unwrappedReturnTypeName }}?{% else %}{{ method.returnTypeName }}{% endif %}{% endmacro %}
+{% macro closureReturnTypeName method %}{{ method.returnTypeName.closureNotation }}{% endmacro %}
 
 {% macro methodClosureDeclaration method %}
     {% call accessLevel method.accessLevel %}{% call staticSpecifier method %}var {% call methodClosureName method %}: (({% for param in method.parameters %}{{ param.typeName }}{% if not forloop.last %}, {% endif %}{% endfor %}) {% if method.isAsync %}async {% endif %}{% if method.throws %}throws {% endif %}-> {% if method.isInitializer %}Void{% else %}{% call closureReturnTypeName method %}{% endif %})?
